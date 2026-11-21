@@ -1922,6 +1922,9 @@
         let pushEnabled = false;
         let foregroundPushListenerAttached = false;
         let appBadgeCount = 0;
+        let browserRealtimeNotificationsEnabled = false;
+        let browserUnreadSnapshot = new Map();
+        let browserUnreadSnapshotInitialized = false;
 
         // ================= SHARED APP STATE =================
         let currentUser = null;
@@ -2014,6 +2017,35 @@
             return registration;
         }
 
+        function showBrowserRealtimeNotification(title, body, options = {}) {
+            if (!browserRealtimeNotificationsEnabled || Notification.permission !== 'granted') return;
+            const notificationOptions = {
+                body,
+                icon: './app-icon.svg',
+                badge: './app-icon.svg',
+                tag: options.tag || 'globalchat-message',
+                renotify: true,
+                data: options.data || { url: './' }
+            };
+            try {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.getRegistration) {
+                    navigator.serviceWorker.getRegistration('./')
+                        .then(registration => {
+                            if (registration) return registration.showNotification(title, notificationOptions);
+                            new Notification(title, notificationOptions);
+                        })
+                        .catch(error => {
+                            console.warn('Could not show browser notification:', error);
+                            try { new Notification(title, notificationOptions); } catch (_) {}
+                        });
+                } else {
+                    new Notification(title, notificationOptions);
+                }
+            } catch (error) {
+                console.warn('Could not show browser notification:', error);
+            }
+        }
+
         async function initializePushNotifications(user) {
             pushEnabled = false;
             pushToken = '';
@@ -2023,39 +2055,9 @@
                 setPushUi(false, PUSH_SECURE_ORIGIN_MESSAGE);
                 return;
             }
-            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-                setPushUi(false, 'Push notifications are not supported in this browser.');
+            if (!('Notification' in window)) {
+                setPushUi(false, 'Browser notifications are not supported.');
                 return;
-            }
-            if (!(await isSupported())) {
-                setPushUi(false, 'Push notifications are not supported in this browser.');
-                return;
-            }
-            if (!FCM_VAPID_KEY) {
-                setPushUi(false, 'Add your Firebase Web Push key to enable notifications.');
-                return;
-            }
-
-            messaging = getMessaging(app);
-            if (!foregroundPushListenerAttached) {
-                onMessage(messaging, payload => {
-                    if (payload.data?.roomId === activeRoom && payload.data?.chatType === activeChatType) return;
-                    const title = payload.notification?.title || payload.data?.title || 'New message';
-                    const body = payload.notification?.body || payload.data?.body || '';
-                    const unreadCount = Math.max(0, Math.trunc(Number(payload.data?.unreadCount) || 0));
-                    if (unreadCount > 0) updateAppBadge(unreadCount);
-                    navigator.serviceWorker.ready
-                        .then(registration => registration.showNotification(title, {
-                            body,
-                            data: { url: './', roomId: payload.data?.roomId, chatType: payload.data?.chatType, unreadCount },
-                            tag: payload.data?.messageId
-                                ? `message-${payload.data?.roomId || 'chat'}-${payload.data.messageId}`
-                                : 'new-message',
-                            renotify: true
-                        }))
-                        .catch(error => console.warn('Could not show foreground notification:', error));
-                });
-                foregroundPushListenerAttached = true;
             }
 
             if (Notification.permission === 'denied') {
@@ -2064,6 +2066,52 @@
             }
             if (Notification.permission !== 'granted') {
                 setPushUi(false, 'Tap to allow notifications for new messages.');
+                return;
+            }
+
+            browserRealtimeNotificationsEnabled = localStorage.getItem('praivat_browser_notifications') !== 'off';
+            if (browserRealtimeNotificationsEnabled) {
+                setPushUi(true, 'Browser notifications are enabled.');
+            }
+
+            if (!FCM_VAPID_KEY) {
+                setPushUi(browserRealtimeNotificationsEnabled, browserRealtimeNotificationsEnabled
+                    ? 'Browser notifications are enabled.'
+                    : 'Browser notifications are off.');
+                return;
+            }
+
+            let fcmSupported = false;
+            try {
+                fcmSupported = await isSupported();
+            } catch (error) {
+                console.warn('Firebase Messaging is unavailable:', error);
+            }
+
+            if (fcmSupported) {
+                messaging = getMessaging(app);
+                if (!foregroundPushListenerAttached) {
+                    onMessage(messaging, payload => {
+                        if (payload.data?.roomId === activeRoom && payload.data?.chatType === activeChatType) return;
+                        const title = payload.notification?.title || payload.data?.title || 'New message';
+                        const body = payload.notification?.body || payload.data?.body || '';
+                        const unreadCount = Math.max(0, Math.trunc(Number(payload.data?.unreadCount) || 0));
+                        if (unreadCount > 0) updateAppBadge(unreadCount);
+                        showBrowserRealtimeNotification(title, body, {
+                            tag: payload.data?.messageId
+                                ? `message-${payload.data?.roomId || 'chat'}-${payload.data.messageId}`
+                                : 'new-message',
+                            data: { url: './', roomId: payload.data?.roomId, chatType: payload.data?.chatType, unreadCount }
+                        });
+                    });
+                    foregroundPushListenerAttached = true;
+                }
+            }
+
+            if (!fcmSupported) {
+                setPushUi(browserRealtimeNotificationsEnabled, browserRealtimeNotificationsEnabled
+                    ? 'Browser notifications are enabled (realtime mode).'
+                    : 'Tap to enable browser notifications.');
                 return;
             }
 
@@ -2092,31 +2140,23 @@
                 setPushUi(false, PUSH_SECURE_ORIGIN_MESSAGE);
                 return window.showToast(PUSH_SECURE_ORIGIN_MESSAGE);
             }
-            if (!messaging) {
-                if (!FCM_VAPID_KEY) {
-                    return window.showToast('Add the Firebase Web Push key in the app configuration first.');
-                }
-                try {
-                    if (!(await isSupported())) return window.showToast('Push notifications are not supported in this browser.');
-                    messaging = getMessaging(app);
-                } catch (error) {
-                    console.error('Firebase Messaging is unavailable:', error);
-                    return window.showToast('Push notifications are not supported in this browser.');
-                }
+            if (!('Notification' in window)) {
+                return window.showToast('Browser notifications are not supported in this browser.');
             }
 
             try {
-                if (pushEnabled && pushTokenKey) {
-                    await remove(ref(db, `fcm_tokens/${currentUser.uid}/${pushTokenKey}`));
-                    await deleteToken(messaging);
+                if (browserRealtimeNotificationsEnabled || (pushEnabled && pushTokenKey)) {
+                    browserRealtimeNotificationsEnabled = false;
+                    localStorage.setItem('praivat_browser_notifications', 'off');
+                    if (pushEnabled && pushTokenKey) {
+                        await remove(ref(db, `fcm_tokens/${currentUser.uid}/${pushTokenKey}`));
+                        if (messaging) await deleteToken(messaging);
+                    }
                     pushEnabled = false;
                     pushToken = '';
                     pushTokenKey = '';
                     setPushUi(false, 'Notifications are off on this device.');
                     return window.showToast('Push notifications disabled.');
-                }
-                if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-                    return window.showToast('Push notifications are not supported in this browser.');
                 }
 
                 const permission = await Notification.requestPermission();
@@ -2124,17 +2164,36 @@
                     setPushUi(false, permission === 'denied' ? 'Notifications are blocked in your browser settings.' : 'Notification permission was not granted.');
                     return window.showToast('Notification permission was not granted.');
                 }
-                const registration = await registerPushServiceWorker();
-                pushToken = await getToken(messaging, { vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: registration });
-                if (!pushToken) throw new Error('Firebase did not return a notification token.');
-                pushTokenKey = await getPushTokenKey(pushToken);
-                await set(ref(db, `fcm_tokens/${currentUser.uid}/${pushTokenKey}`), {
-                    token: pushToken,
-                    updatedAt: Date.now()
-                });
-                pushEnabled = true;
-                setPushUi(true, 'You will receive new message notifications.');
-                window.showToast('Push notifications enabled.');
+
+                browserRealtimeNotificationsEnabled = true;
+                localStorage.setItem('praivat_browser_notifications', 'on');
+
+                let fcmSupported = false;
+                if (FCM_VAPID_KEY) {
+                    try {
+                        fcmSupported = await isSupported();
+                        if (fcmSupported) {
+                            messaging = messaging || getMessaging(app);
+                            const registration = await registerPushServiceWorker();
+                            pushToken = await getToken(messaging, { vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: registration });
+                            if (pushToken) {
+                                pushTokenKey = await getPushTokenKey(pushToken);
+                                await set(ref(db, `fcm_tokens/${currentUser.uid}/${pushTokenKey}`), {
+                                    token: pushToken,
+                                    updatedAt: Date.now()
+                                });
+                                pushEnabled = true;
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('FCM push setup unavailable; using browser realtime notifications:', error);
+                    }
+                }
+
+                setPushUi(true, fcmSupported
+                    ? 'Browser and push notifications are enabled.'
+                    : 'Browser notifications are enabled (realtime mode).');
+                window.showToast('Notifications enabled.');
             } catch (error) {
                 console.error('Could not update push notification settings:', error);
                 window.showToast(isDatabasePermissionDenied(error)
@@ -2543,6 +2602,9 @@
                 pushToken = '';
                 pushTokenKey = '';
                 messaging = null;
+                browserRealtimeNotificationsEnabled = false;
+                browserUnreadSnapshot.clear();
+                browserUnreadSnapshotInitialized = false;
                 updateAppBadge(0);
                 const authScreen = document.getElementById('auth-screen');
                 if (authScreen) {
@@ -2676,6 +2738,8 @@
                 myChatPartners.clear();
 
                 if (!snapshot.exists()) {
+                    browserUnreadSnapshot.clear();
+                    browserUnreadSnapshotInitialized = true;
                     updateAppBadge(0);
                     if (emptyState) emptyState.style.display = 'flex';
                     return;
@@ -2683,13 +2747,33 @@
 
                 const chats = [];
                 let totalUnreadCount = 0;
+                const nextBrowserUnreadSnapshot = new Map();
                 snapshot.forEach(c => {
                     const targetId = c.val().targetUid || c.key;
                     if (!c.val().isGroup && !c.val().isChannel) myChatPartners.add(targetId);
                     const chat = { ...c.val(), targetUid: targetId };
-                    totalUnreadCount += Math.max(0, Math.trunc(Number(chat.unreadCount) || 0));
+                    const unreadCount = Math.max(0, Math.trunc(Number(chat.unreadCount) || 0));
+                    totalUnreadCount += unreadCount;
+                    nextBrowserUnreadSnapshot.set(c.key, unreadCount);
+                    if (browserRealtimeNotificationsEnabled && browserUnreadSnapshotInitialized) {
+                        const previousUnreadCount = browserUnreadSnapshot.get(c.key) || 0;
+                        const chatType = chat.isGroup ? 'group' : chat.isChannel ? 'channel' : 'private';
+                        const chatIsOpen = activeChatType === chatType
+                            && (activeTargetUid === chat.targetUid || activeRoom === chat.targetUid);
+                        if (unreadCount > previousUnreadCount
+                            && chat.lastMessageSenderId !== currentUser.uid
+                            && !chatIsOpen
+                            && Notification.permission === 'granted') {
+                            showBrowserRealtimeNotification(chat.name || 'New message', chat.lastMessage || 'You have a new message', {
+                                tag: `chat-${c.key}`,
+                                data: { url: './', roomId: c.key, chatType: chat.isGroup ? 'group' : chat.isChannel ? 'channel' : 'private' }
+                            });
+                        }
+                    }
                     chats.push(chat);
                 });
+                browserUnreadSnapshot = nextBrowserUnreadSnapshot;
+                browserUnreadSnapshotInitialized = true;
                 updateAppBadge(totalUnreadCount);
 
                 if (chats.length === 0) { if (emptyState) emptyState.style.display = 'flex'; return; }

@@ -2069,7 +2069,7 @@
                 return;
             }
 
-            browserRealtimeNotificationsEnabled = localStorage.getItem('praivat_browser_notifications') !== 'off';
+            browserRealtimeNotificationsEnabled = localStorage.getItem('praivat_browser_notifications') === 'on';
             if (browserRealtimeNotificationsEnabled) {
                 setPushUi(true, 'Browser notifications are enabled.');
             }
@@ -2125,12 +2125,18 @@
                 pushTokenKey = await getPushTokenKey(pushToken);
                 const tokenSnapshot = await get(ref(db, `fcm_tokens/${user.uid}/${pushTokenKey}`));
                 pushEnabled = tokenSnapshot.exists();
-                setPushUi(pushEnabled, pushEnabled ? 'You will receive new message notifications.' : 'Tap to enable notifications on this device.');
+                setPushUi(pushEnabled || browserRealtimeNotificationsEnabled, pushEnabled
+                    ? 'You will receive new message notifications.'
+                    : browserRealtimeNotificationsEnabled
+                        ? 'Browser alerts work while this app is open; background push is not registered.'
+                        : 'Tap to enable notifications on this device.');
             } catch (error) {
                 console.warn('Push notification setup failed:', error);
-                setPushUi(false, isDatabasePermissionDenied(error)
-                    ? 'Firebase Database rules denied access to this device token.'
-                    : 'Could not set up notifications. Please try again.');
+                setPushUi(browserRealtimeNotificationsEnabled, browserRealtimeNotificationsEnabled
+                    ? 'Browser alerts work while this app is open; background push setup failed.'
+                    : isDatabasePermissionDenied(error)
+                        ? 'Firebase Database rules denied access to this device token.'
+                        : 'Could not set up notifications. Please try again.');
             }
         }
 
@@ -2169,6 +2175,7 @@
                 localStorage.setItem('praivat_browser_notifications', 'on');
 
                 let fcmSupported = false;
+                let pushSetupError = null;
                 if (FCM_VAPID_KEY) {
                     try {
                         fcmSupported = await isSupported();
@@ -2183,17 +2190,28 @@
                                     updatedAt: Date.now()
                                 });
                                 pushEnabled = true;
+                            } else {
+                                pushSetupError = new Error('Could not create a notification subscription.');
                             }
                         }
                     } catch (error) {
                         console.warn('FCM push setup unavailable; using browser realtime notifications:', error);
+                        pushSetupError = error;
                     }
                 }
 
-                setPushUi(true, fcmSupported
+                setPushUi(true, pushEnabled
                     ? 'Browser and push notifications are enabled.'
-                    : 'Browser notifications are enabled (realtime mode).');
-                window.showToast('Notifications enabled.');
+                    : 'Browser notifications work while this app is open; background push is not set up.');
+                if (pushEnabled) {
+                    window.showToast('Notifications enabled.');
+                } else if (pushSetupError && isDatabasePermissionDenied(pushSetupError)) {
+                    window.showToast('Browser alerts are on, but Firebase Database rules blocked saving the push token.');
+                } else {
+                    window.showToast(pushSetupError
+                        ? `Browser alerts are on, but background push setup failed: ${pushSetupError.message || 'try again.'}`
+                        : 'Browser alerts are on while the app is open; this browser does not support background push.');
+                }
             } catch (error) {
                 console.error('Could not update push notification settings:', error);
                 window.showToast(isDatabasePermissionDenied(error)

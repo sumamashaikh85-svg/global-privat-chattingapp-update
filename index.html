@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#08745f">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./app-icon.svg" type="image/svg+xml">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="GlobalChat">
     <title>Global Privat Chatting — Real-Time Messenger</title>
     
     <!-- Bootstrap 5 CSS CDN -->
@@ -115,9 +120,16 @@
 
         .app-container { 
             width: 100%; max-width: 100%; 
-            height: 100%; height: 100dvh;
+            height: 100%; height: var(--app-viewport-height, 100dvh);
             background-color: var(--bg-app); display: flex; flex-direction: column; 
             position: absolute; inset: 0; overflow: hidden; 
+        }
+
+        @media (max-width: 899px) {
+            .app-container {
+                top: var(--app-viewport-offset-top, 0px);
+                bottom: auto;
+            }
         }
         
         @media (min-width: 900px) {
@@ -251,6 +263,8 @@
         .chat-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
         .chat-name { font-size: 15.5px; color: var(--text-primary); font-weight: 700; display: flex; align-items: center; gap: 6px; }
         .chat-time { font-size: 12px; color: var(--text-tertiary); font-weight: 600; }
+        .chat-meta { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+        .unread-count-badge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--wa-teal); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; line-height: 1; }
         .chat-bottom { display: flex; justify-content: space-between; align-items: center; }
         .chat-msg { font-size: 13.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; display: flex; align-items: center; gap: 4px; font-weight: 500; }
 
@@ -1061,6 +1075,23 @@
 
     <!-- Early helper stubs to prevent any inline click error -->
     <script>
+        (() => {
+            const viewport = window.visualViewport;
+            const updateAppViewport = () => {
+                const visibleHeight = viewport ? viewport.height : window.innerHeight;
+                const offsetTop = viewport ? viewport.offsetTop : 0;
+                document.documentElement.style.setProperty('--app-viewport-height', `${visibleHeight}px`);
+                document.documentElement.style.setProperty('--app-viewport-offset-top', `${offsetTop}px`);
+            };
+
+            updateAppViewport();
+            window.addEventListener('resize', updateAppViewport);
+            if (viewport) {
+                viewport.addEventListener('resize', updateAppViewport);
+                viewport.addEventListener('scroll', updateAppViewport);
+            }
+        })();
+
         window.handleAuth = function(e) { if(e && e.preventDefault) e.preventDefault(); };
         window.toggleAuthMode = function() {};
         window.changeLanguage = function() {};
@@ -1293,6 +1324,14 @@
                             <div style="margin-left:14px; flex:1;">
                                 <div style="font-weight:700; font-size:14.5px;" data-i18n="shareProfileLink">Share Profile Link</div>
                                 <div style="font-size:12.5px; color:var(--text-tertiary);">Let friends add you instantly</div>
+                            </div>
+                            <span class="material-symbols-rounded" style="color:var(--text-tertiary);">chevron_right</span>
+                        </div>
+                        <div class="chat-item" role="button" tabindex="0" onclick="window.togglePushNotifications()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.togglePushNotifications();}">
+                            <span class="material-symbols-rounded" style="color:#f59e0b; font-size:22px;">notifications_active</span>
+                            <div style="margin-left:14px; flex:1;">
+                                <div id="push-notifications-label" style="font-weight:700; font-size:14.5px;">Enable push notifications</div>
+                                <div id="push-notifications-status" style="font-size:12.5px; color:var(--text-tertiary);">Get notified about new messages</div>
                             </div>
                             <span class="material-symbols-rounded" style="color:var(--text-tertiary);">chevron_right</span>
                         </div>
@@ -1857,7 +1896,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile, deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        import { getDatabase, ref, set, get, child, push, onChildAdded, onChildChanged, onChildRemoved, onValue, update, remove, onDisconnect, serverTimestamp, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getDatabase, ref, set, get, child, push, onChildAdded, onChildChanged, onChildRemoved, onValue, update, remove, onDisconnect, serverTimestamp, query, limitToLast, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { getMessaging, getToken, onMessage, deleteToken, isSupported } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-messaging.js";
 
         // ================= FIREBASE SETUP =================
         const firebaseConfig = {
@@ -1870,10 +1910,18 @@
             appId: "1:390094097826:web:a30eef1e94b5c07597f6fb",
             measurementId: "G-TWXFEYLWKC"
         };
+        const FCM_VAPID_KEY = "BJMWcSzP6AtpBHthDbsUHjGQFaKrps37_oKIpx-dp9IpuzLIGJV9vKVVjPtsSJmSI1xTY0VCUIRIMNE1aGlpdm0";
+        const PUSH_SECURE_ORIGIN_MESSAGE = 'Push notifications require HTTPS or localhost. Open this app through a local web server instead of a file.';
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getDatabase(app);
+        let messaging = null;
+        let pushToken = '';
+        let pushTokenKey = '';
+        let pushEnabled = false;
+        let foregroundPushListenerAttached = false;
+        let appBadgeCount = 0;
 
         // ================= SHARED APP STATE =================
         let currentUser = null;
@@ -1902,6 +1950,198 @@
 
         const userProfilePicCache = Object.create(null);
         const myChatPartners = new Set();
+        const repairedUsernameIndexKeys = new Set();
+
+        async function repairUsernameIndex(uid, username) {
+            const normalizedUsername = String(username || '').trim().replace(/^@+/, '').toLowerCase();
+            if (!/^[a-z0-9_]{3,20}$/.test(normalizedUsername)) return;
+
+            const repairKey = `${uid}:${normalizedUsername}`;
+            if (repairedUsernameIndexKeys.has(repairKey)) return;
+
+            const result = await runTransaction(ref(db, `usernames/${normalizedUsername}`), existingUid => {
+                return existingUid === null ? uid : existingUid;
+            });
+            repairedUsernameIndexKeys.add(repairKey);
+
+            if (result.snapshot.val() !== uid) {
+                console.warn('Username index is already linked to a different account; leaving it unchanged.', {
+                    username: normalizedUsername
+                });
+            }
+        }
+
+        function setPushUi(enabled, status) {
+            const label = document.getElementById('push-notifications-label');
+            const detail = document.getElementById('push-notifications-status');
+            if (label) label.textContent = enabled ? 'Disable push notifications' : 'Enable push notifications';
+            if (detail) detail.textContent = status;
+        }
+
+        async function updateAppBadge(count) {
+            appBadgeCount = Math.max(0, Math.trunc(Number(count) || 0));
+            document.title = appBadgeCount > 0 ? `(${appBadgeCount}) GlobalChat` : 'GlobalChat';
+            if (!('setAppBadge' in navigator)) return;
+            try {
+                if (appBadgeCount > 0) await navigator.setAppBadge(appBadgeCount);
+                else await navigator.clearAppBadge();
+            } catch (error) {
+                console.warn('Could not update app badge:', error);
+            }
+        }
+
+        function hasSupportedPushOrigin() {
+            const isLocalhost = location.protocol === 'http:' &&
+                ['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname);
+            return window.isSecureContext && (location.protocol === 'https:' || isLocalhost);
+        }
+
+        function isDatabasePermissionDenied(error) {
+            return error?.code === 'PERMISSION_DENIED' || /permission[_ ]denied/i.test(error?.message || '');
+        }
+
+        async function getPushTokenKey(token) {
+            const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+            return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function registerPushServiceWorker() {
+            if (!hasSupportedPushOrigin()) throw new Error(PUSH_SECURE_ORIGIN_MESSAGE);
+            const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js', {
+                updateViaCache: 'none'
+            });
+            await registration.update();
+            return registration;
+        }
+
+        async function initializePushNotifications(user) {
+            pushEnabled = false;
+            pushToken = '';
+            pushTokenKey = '';
+
+            if (!hasSupportedPushOrigin()) {
+                setPushUi(false, PUSH_SECURE_ORIGIN_MESSAGE);
+                return;
+            }
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                setPushUi(false, 'Push notifications are not supported in this browser.');
+                return;
+            }
+            if (!(await isSupported())) {
+                setPushUi(false, 'Push notifications are not supported in this browser.');
+                return;
+            }
+            if (!FCM_VAPID_KEY) {
+                setPushUi(false, 'Add your Firebase Web Push key to enable notifications.');
+                return;
+            }
+
+            messaging = getMessaging(app);
+            if (!foregroundPushListenerAttached) {
+                onMessage(messaging, payload => {
+                    if (payload.data?.roomId === activeRoom && payload.data?.chatType === activeChatType) return;
+                    const title = payload.notification?.title || payload.data?.title || 'New message';
+                    const body = payload.notification?.body || payload.data?.body || '';
+                    const unreadCount = Math.max(0, Math.trunc(Number(payload.data?.unreadCount) || 0));
+                    if (unreadCount > 0) updateAppBadge(unreadCount);
+                    navigator.serviceWorker.ready
+                        .then(registration => registration.showNotification(title, {
+                            body,
+                            data: { url: './', roomId: payload.data?.roomId, chatType: payload.data?.chatType, unreadCount },
+                            tag: payload.data?.messageId
+                                ? `message-${payload.data?.roomId || 'chat'}-${payload.data.messageId}`
+                                : 'new-message',
+                            renotify: true
+                        }))
+                        .catch(error => console.warn('Could not show foreground notification:', error));
+                });
+                foregroundPushListenerAttached = true;
+            }
+
+            if (Notification.permission === 'denied') {
+                setPushUi(false, 'Notifications are blocked in your browser settings.');
+                return;
+            }
+            if (Notification.permission !== 'granted') {
+                setPushUi(false, 'Tap to allow notifications for new messages.');
+                return;
+            }
+
+            try {
+                const registration = await registerPushServiceWorker();
+                pushToken = await getToken(messaging, { vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: registration });
+                if (!pushToken) {
+                    setPushUi(false, 'Could not create a notification subscription.');
+                    return;
+                }
+                pushTokenKey = await getPushTokenKey(pushToken);
+                const tokenSnapshot = await get(ref(db, `fcm_tokens/${user.uid}/${pushTokenKey}`));
+                pushEnabled = tokenSnapshot.exists();
+                setPushUi(pushEnabled, pushEnabled ? 'You will receive new message notifications.' : 'Tap to enable notifications on this device.');
+            } catch (error) {
+                console.warn('Push notification setup failed:', error);
+                setPushUi(false, isDatabasePermissionDenied(error)
+                    ? 'Firebase Database rules denied access to this device token.'
+                    : 'Could not set up notifications. Please try again.');
+            }
+        }
+
+        window.togglePushNotifications = async function() {
+            if (!currentUser) return window.showToast('Please log in to manage notifications.');
+            if (!hasSupportedPushOrigin()) {
+                setPushUi(false, PUSH_SECURE_ORIGIN_MESSAGE);
+                return window.showToast(PUSH_SECURE_ORIGIN_MESSAGE);
+            }
+            if (!messaging) {
+                if (!FCM_VAPID_KEY) {
+                    return window.showToast('Add the Firebase Web Push key in the app configuration first.');
+                }
+                try {
+                    if (!(await isSupported())) return window.showToast('Push notifications are not supported in this browser.');
+                    messaging = getMessaging(app);
+                } catch (error) {
+                    console.error('Firebase Messaging is unavailable:', error);
+                    return window.showToast('Push notifications are not supported in this browser.');
+                }
+            }
+
+            try {
+                if (pushEnabled && pushTokenKey) {
+                    await remove(ref(db, `fcm_tokens/${currentUser.uid}/${pushTokenKey}`));
+                    await deleteToken(messaging);
+                    pushEnabled = false;
+                    pushToken = '';
+                    pushTokenKey = '';
+                    setPushUi(false, 'Notifications are off on this device.');
+                    return window.showToast('Push notifications disabled.');
+                }
+                if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                    return window.showToast('Push notifications are not supported in this browser.');
+                }
+
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    setPushUi(false, permission === 'denied' ? 'Notifications are blocked in your browser settings.' : 'Notification permission was not granted.');
+                    return window.showToast('Notification permission was not granted.');
+                }
+                const registration = await registerPushServiceWorker();
+                pushToken = await getToken(messaging, { vapidKey: FCM_VAPID_KEY, serviceWorkerRegistration: registration });
+                if (!pushToken) throw new Error('Firebase did not return a notification token.');
+                pushTokenKey = await getPushTokenKey(pushToken);
+                await set(ref(db, `fcm_tokens/${currentUser.uid}/${pushTokenKey}`), {
+                    token: pushToken,
+                    updatedAt: Date.now()
+                });
+                pushEnabled = true;
+                setPushUi(true, 'You will receive new message notifications.');
+                window.showToast('Push notifications enabled.');
+            } catch (error) {
+                console.error('Could not update push notification settings:', error);
+                window.showToast(isDatabasePermissionDenied(error)
+                    ? 'Firebase Database rules must allow this signed-in user to write their own fcm_tokens node.'
+                    : error.message || 'Could not update notification settings.');
+            }
+        };
         const translations = {
             en: {
                 welcome: 'Welcome to Global Privat Chatting', signUp: 'Sign up', logIn: 'Log in',
@@ -2210,6 +2450,10 @@
             if (user) {
                 currentUser = user;
                 window.currentUser = user;
+                initializePushNotifications(user).catch(error => {
+                    console.warn('Push notification initialization failed:', error);
+                    setPushUi(false, 'Could not set up notifications. Please try again.');
+                });
 
                 // Guaranteed screen switch
                 const authScreen = document.getElementById('auth-screen');
@@ -2247,6 +2491,9 @@
                     onValue(ref(db, `users/${user.uid}`), async (snap) => {
                         if (snap.exists()) {
                             const d = snap.val();
+                            repairUsernameIndex(user.uid, d.username).catch(error => {
+                                console.error('Could not repair the signed-in user username index:', error);
+                            });
                             document.getElementById('settings-profile-name').innerText = d.displayName || 'User';
                             document.getElementById('settings-profile-username').innerText = `@${d.username || 'user'}`;
                             document.getElementById('settings-profile-bio').innerText = getDisplayBio(d.bio);
@@ -2274,7 +2521,9 @@
                                 profilePicUrl: user.photoURL || '',
                                 createdAt: serverTimestamp()
                             });
-                            await set(ref(db, `usernames/${fallbackUsername}`), user.uid).catch(() => {});
+                            repairUsernameIndex(user.uid, fallbackUsername).catch(error => {
+                                console.error('Could not create the signed-in user username index:', error);
+                            });
                         }
                     });
                 } catch (e) {
@@ -2290,6 +2539,11 @@
             } else {
                 currentUser = null;
                 window.currentUser = null;
+                pushEnabled = false;
+                pushToken = '';
+                pushTokenKey = '';
+                messaging = null;
+                updateAppBadge(0);
                 const authScreen = document.getElementById('auth-screen');
                 if (authScreen) {
                     authScreen.classList.remove('hidden');
@@ -2421,14 +2675,22 @@
                 listEl.innerHTML = '';
                 myChatPartners.clear();
 
-                if (!snapshot.exists()) { if (emptyState) emptyState.style.display = 'flex'; return; }
+                if (!snapshot.exists()) {
+                    updateAppBadge(0);
+                    if (emptyState) emptyState.style.display = 'flex';
+                    return;
+                }
 
                 const chats = [];
+                let totalUnreadCount = 0;
                 snapshot.forEach(c => {
                     const targetId = c.val().targetUid || c.key;
                     if (!c.val().isGroup && !c.val().isChannel) myChatPartners.add(targetId);
-                    chats.push({ ...c.val(), targetUid: targetId });
+                    const chat = { ...c.val(), targetUid: targetId };
+                    totalUnreadCount += Math.max(0, Math.trunc(Number(chat.unreadCount) || 0));
+                    chats.push(chat);
                 });
+                updateAppBadge(totalUnreadCount);
 
                 if (chats.length === 0) { if (emptyState) emptyState.style.display = 'flex'; return; }
                 if (emptyState) emptyState.style.display = 'none';
@@ -2443,6 +2705,10 @@
                     const avatarUrl = userProfilePicCache[chat.targetUid] || chat.targetPicUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(chat.name || 'User')}&background=00a884&color=fff`;
                     const timeStr = chat.timestamp ? new Date(chat.timestamp).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : '';
                     const tickHtml = (chat.lastMessageSenderId === currentUser.uid) ? getTickSvg(chat.lastMessageStatus || 'sent') : '';
+                    const unreadCount = Math.max(0, Math.trunc(Number(chat.unreadCount) || 0));
+                    const unreadBadge = unreadCount > 0
+                        ? `<span class="unread-count-badge" aria-label="${unreadCount} unread messages">${unreadCount}</span>`
+                        : '';
 
                     let badgeIcon = '';
                     if (chat.isGroup) badgeIcon = '<span class="material-symbols-rounded group-badge-icon">groups</span>';
@@ -2482,7 +2748,7 @@
                         <div class="chat-details">
                             <div class="chat-top">
                                 <span class="chat-name">${escapeHtml(chat.name || 'User')} ${pinIndicator}</span>
-                                <span class="chat-time">${timeStr}</span>
+                                <span class="chat-meta"><span class="chat-time">${timeStr}</span>${unreadBadge}</span>
                             </div>
                             <div class="chat-bottom">
                                 <div class="chat-msg">
@@ -2576,7 +2842,14 @@
         };
 
         // ================= CONTACTS TAB =================
-        async function syncContactsTabWithChattedUsers() {
+        function syncContactsTabWithChattedUsers() {
+            return loadContactsTabWithChattedUsers().catch(error => {
+                console.error('Could not sync contacts:', error);
+                window.showToast(`Could not load contacts: ${error.message || 'Firebase Database access was denied.'}`);
+            });
+        }
+
+        async function loadContactsTabWithChattedUsers() {
             if (!currentUser) return;
             const listContainer = document.getElementById('friends-list-container');
             const noContacts = document.getElementById('no-contacts-state');
@@ -2736,9 +3009,12 @@
                 };
                 result.appendChild(card);
             } catch(e) {
+                const permissionDenied = e?.code === 'PERMISSION_DENIED' || /permission[_ ]denied/i.test(e?.message || '');
                 feedback.className = 'find-username-feedback is-invalid';
-                feedback.innerHTML = '<span class="material-symbols-rounded">cloud_off</span> Could not complete search.';
-                result.innerHTML = '<div class="find-result-state error"><span class="material-symbols-rounded">wifi_off</span><span><strong>Search failed</strong><br>' + escapeHtml(e.message || 'Please try again.') + '</span></div>';
+                feedback.innerHTML = permissionDenied
+                    ? '<span class="material-symbols-rounded">lock</span> Firebase denied access to the username lookup.'
+                    : '<span class="material-symbols-rounded">cloud_off</span> Could not complete search.';
+                result.innerHTML = '<div class="find-result-state error"><span class="material-symbols-rounded">wifi_off</span><span><strong>' + (permissionDenied ? 'Database access denied' : 'Search failed') + '</strong><br>' + escapeHtml(e.message || 'Please try again.') + '</span></div>';
             }
         };
 
@@ -2937,8 +3213,23 @@
             }
 
             deletedForMeList = [];
-            const delSnap = await get(ref(db, `user_chats/${currentUser.uid}/${activeTargetUid}/deleted_for_me`));
+            const conversationChatId = type === 'private' ? targetUid : activeRoom;
+            const userChatPath = `user_chats/${currentUser.uid}/${conversationChatId}`;
+            const [delSnap, userChatSnap] = await Promise.all([
+                get(ref(db, `${userChatPath}/deleted_for_me`)),
+                get(ref(db, userChatPath))
+            ]);
             if (delSnap.exists()) deletedForMeList = Object.keys(delSnap.val());
+            if (userChatSnap.exists()) {
+                update(ref(db, userChatPath), {
+                    unreadCount: 0,
+                    unreadMessageIds: null,
+                    lastReadAt: serverTimestamp()
+                }).catch(error => {
+                    console.error('Could not clear unread messages:', error);
+                    window.showToast('Could not mark this chat as read.');
+                });
+            }
 
             const chatPath = type === 'group' ? `groups/${activeRoom}/messages` : (type === 'channel' ? `channels/${activeRoom}/messages` : `private_chats/${activeRoom}/messages`);
             const chatRef = ref(db, chatPath);
@@ -2950,9 +3241,20 @@
                     scrollToBottom();
                 }
                 if (snap.val()?.senderId !== currentUser.uid && snap.val()?.status !== 'read') {
-                    update(ref(db, `${chatPath}/${snap.key}`), { status: 'read' }).catch(() => {});
-                    if (activeChatType === 'private') {
-                        update(ref(db, `user_chats/${activeTargetUid}/${currentUser.uid}`), { lastMessageStatus: 'read' }).catch(() => {});
+                    update(ref(db, `${chatPath}/${snap.key}`), { status: 'read' }).catch(error => {
+                        console.error('Could not mark incoming message as read:', error);
+                    });
+                    update(ref(db, userChatPath), {
+                        unreadCount: 0,
+                        unreadMessageIds: null,
+                        lastReadAt: serverTimestamp()
+                    }).catch(error => {
+                        console.error('Could not update unread message count:', error);
+                    });
+                    if (type === 'private') {
+                        update(ref(db, `user_chats/${targetUid}/${currentUser.uid}`), { lastMessageStatus: 'read' }).catch(error => {
+                            console.error('Could not update message read status:', error);
+                        });
                     }
                 }
             });

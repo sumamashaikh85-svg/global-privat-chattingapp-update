@@ -1078,7 +1078,7 @@
         (() => {
             const viewport = window.visualViewport;
             const updateAppViewport = () => {
-                const visibleHeight = viewport ? viewport.height : window.innerHeight;
+                const visibleHeight = viewport ? Math.min(viewport.height, window.innerHeight) : window.innerHeight;
                 const offsetTop = viewport ? viewport.offsetTop : 0;
                 document.documentElement.style.setProperty('--app-viewport-height', `${visibleHeight}px`);
                 document.documentElement.style.setProperty('--app-viewport-offset-top', `${offsetTop}px`);
@@ -1090,6 +1090,11 @@
                 viewport.addEventListener('resize', updateAppViewport);
                 viewport.addEventListener('scroll', updateAppViewport);
             }
+            document.addEventListener('focusin', event => {
+                if (event.target.id !== 'msg-input') return;
+                updateAppViewport();
+                window.setTimeout(updateAppViewport, 250);
+            });
         })();
 
         window.handleAuth = function(e) { if(e && e.preventDefault) e.preventDefault(); };

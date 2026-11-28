@@ -313,6 +313,13 @@
         .btn-create-channel-mini { background: var(--wa-teal-light); color: var(--wa-teal-dark); border: none; padding: 5px 12px; border-radius: 12px; font-size: 12px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 4px; }
 
         .channel-create-wrapper { padding: 24px 20px 40px; display: flex; flex-direction: column; gap: 18px; max-width: 480px; margin: 0 auto; width: 100%; }
+        .channel-create-hero { padding: 20px; border-radius: 24px; color: #fff; background: linear-gradient(135deg, #063f3b, #08745f 58%, #0e7490); box-shadow: 0 16px 35px rgba(8, 116, 95, .2); }
+        .channel-create-hero-mark { width: 42px; height: 42px; border: 1px solid rgba(255,255,255,.25); border-radius: 14px; display: grid; place-items: center; background: rgba(255,255,255,.12); }
+        .channel-info-section { width: 100%; margin-top: 20px; padding: 16px; border: 1px solid var(--border-light); border-radius: 20px; background: var(--bg-surface); box-shadow: var(--shadow-sm); }
+        .channel-info-section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+        .channel-subscriber-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border-subtle); }
+        .channel-subscriber-avatar { width: 36px; height: 36px; flex: 0 0 36px; border-radius: 50%; background-color: var(--bg-input); background-size: cover; background-position: center; }
+        .channel-permission-btn { margin-left: auto; border: 1px solid var(--border-light); border-radius: 12px; padding: 7px 10px; background: var(--bg-subtle); color: var(--text-primary); font-size: 12px; font-weight: 700; cursor: pointer; }
         .channel-avatar-uploader { position: relative; width: 96px; height: 96px; margin: 6px auto 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .channel-avatar-box { width: 96px; height: 96px; border-radius: 30px; background: linear-gradient(135deg, #e0f2fe 0%, #ecfdf5 100%); border: 2px solid var(--border-light); color: var(--wa-teal-dark); display: flex; align-items: center; justify-content: center; background-size: cover; background-position: center; box-shadow: 0 10px 25px rgba(0, 168, 132, 0.15); transition: all 0.25s ease; }
         .channel-avatar-uploader:hover .channel-avatar-box { transform: scale(1.03); border-color: var(--wa-teal); }
@@ -477,7 +484,7 @@
         .story-progress-track { flex: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
         .story-progress-fill { height: 100%; width: 0%; background: #ffffff; transition: width 0.1s linear; }
         .story-view-header { position: absolute; top: 24px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; z-index: 10; color: #fff; }
-        .story-content-display { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; position: relative; }
+        .story-content-display { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; position: relative; touch-action: manipulation; }
         .story-text-card { padding: 34px 24px; font-size: 26px; font-weight: 800; color: #fff; text-align: center; word-break: break-word; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 
         /* Image Lightbox */
@@ -487,6 +494,15 @@
         /* Toast */
         .custom-toast { position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%) translateY(20px); background-color: rgba(15, 23, 42, 0.94); backdrop-filter: blur(12px); color: white; padding: 10px 20px; border-radius: 22px; font-size: 13.5px; font-weight: 600; opacity: 0; transition: all 0.25s; z-index: 30000; pointer-events: none; white-space: nowrap; }
         .custom-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #app-update-banner { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 31000; width: min(calc(100% - 32px), 440px); transform: translateX(-50%); align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; border: 1px solid var(--border-light); border-radius: 18px; background: var(--bg-surface); color: var(--text-primary); box-shadow: var(--shadow-modal); }
+        #app-update-banner[hidden] { display: none; }
+        .app-update-copy { min-width: 0; }
+        .app-update-title { font-size: 14px; font-weight: 800; }
+        .app-update-detail { margin-top: 3px; color: var(--text-secondary); font-size: 12px; }
+        .app-update-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+        .app-update-actions button { min-height: 38px; border: 0; border-radius: 11px; padding: 8px 12px; font-size: 12px; font-weight: 800; cursor: pointer; }
+        #app-update-later { background: var(--bg-input); color: var(--text-secondary); }
+        #app-update-now { background: var(--wa-teal); color: #fff; }
 
         .spinner { border: 2.5px solid rgba(255, 255, 255, 0.3); border-top: 2.5px solid currentColor; border-radius: 50%; width: 18px; height: 18px; animation: spin 0.8s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -1078,7 +1094,7 @@
         (() => {
             const viewport = window.visualViewport;
             const updateAppViewport = () => {
-                const visibleHeight = viewport ? Math.min(viewport.height, window.innerHeight) : window.innerHeight;
+                const visibleHeight = viewport ? viewport.height : window.innerHeight;
                 const offsetTop = viewport ? viewport.offsetTop : 0;
                 document.documentElement.style.setProperty('--app-viewport-height', `${visibleHeight}px`);
                 document.documentElement.style.setProperty('--app-viewport-offset-top', `${offsetTop}px`);
@@ -1090,11 +1106,6 @@
                 viewport.addEventListener('resize', updateAppViewport);
                 viewport.addEventListener('scroll', updateAppViewport);
             }
-            document.addEventListener('focusin', event => {
-                if (event.target.id !== 'msg-input') return;
-                updateAppViewport();
-                window.setTimeout(updateAppViewport, 250);
-            });
         })();
 
         window.handleAuth = function(e) { if(e && e.preventDefault) e.preventDefault(); };
@@ -1560,6 +1571,11 @@
                 <h2 style="font-size:18px; font-weight:800; margin:0;" data-i18n="createChannel">New Broadcast Channel</h2>
             </div>
             <div class="channel-create-wrapper">
+                <div class="channel-create-hero">
+                    <div class="channel-create-hero-mark"><span class="material-symbols-rounded">campaign</span></div>
+                    <div style="margin-top:14px;font-size:19px;font-weight:800;letter-spacing:-.3px;">Your channel, your voice</div>
+                    <div style="margin-top:5px;font-size:13px;line-height:1.5;color:rgba(255,255,255,.82);">Create a trusted space for updates and manage who can publish.</div>
+                </div>
                 <div class="channel-avatar-uploader" onclick="document.getElementById('channel-img-input').click()">
                     <div class="channel-avatar-box" id="channel-create-avatar">
                         <span class="material-symbols-rounded" style="font-size:44px;">campaign</span>
@@ -1611,6 +1627,10 @@
                 <span id="ci-subscribers-count" style="font-size:13px; color:var(--wa-teal); font-weight:700; margin-top:2px;">0 subscribers</span>
                 <p id="ci-desc" style="font-size:14px; color:var(--text-secondary); text-align:center; margin:10px 0;"></p>
                 <div id="ci-follow-action" style="width:100%; margin-top:10px;"></div>
+                <section class="channel-info-section" aria-labelledby="ci-subscribers-title">
+                    <div class="channel-info-section-title" id="ci-subscribers-title"><span class="material-symbols-rounded" style="color:var(--wa-teal);">groups</span>Subscribers</div>
+                    <div id="ci-subscribers-list"></div>
+                </section>
             </div>
         </div>
 
@@ -1695,7 +1715,7 @@
                     </div>
                     <div class="status-option-btn" onclick="window.triggerStatusVideoPicker()">
                         <div class="status-option-icon-wrap" style="background:linear-gradient(135deg, #8b5cf6, #6d28d9);"><span class="material-symbols-rounded">videocam</span></div>
-                        <div style="flex:1;"><div style="font-weight:800; font-size:15.5px;" data-i18n="videoStatus">Video Status</div><div style="font-size:12.5px; color:var(--text-tertiary);">Videos from gallery</div></div>
+                        <div style="flex:1;"><div style="font-weight:800; font-size:15.5px;" data-i18n="videoStatus">Video Status</div><div style="font-size:12.5px; color:var(--text-tertiary);">Videos up to 60 seconds</div></div>
                     </div>
                     <div class="status-option-btn" onclick="window.triggerStatusTextEditor()">
                         <div class="status-option-icon-wrap" style="background:linear-gradient(135deg, #10b981, #047857);"><span class="material-symbols-rounded">edit_note</span></div>
@@ -1719,7 +1739,7 @@
                 <input type="text" id="mp-caption-input" data-i18n-ph="addCaption" placeholder="Add a caption..." style="width:100%; padding:12px; border-radius:14px; border:1px solid var(--border-light); background:var(--bg-input); color:var(--text-primary); font-size:14px;">
                 <div class="confirm-actions">
                     <button class="confirm-btn cancel" onclick="window.closeMediaPreviewModal()" data-i18n="cancel">Cancel</button>
-                    <button class="confirm-btn primary" onclick="window.submitMediaStatusUpload()"><span class="material-symbols-rounded" style="font-size:18px;">send</span> <span data-i18n="addStatus">Add Status</span></button>
+                    <button class="confirm-btn primary" id="submit-status-btn" onclick="window.submitMediaStatusUpload()"><span class="material-symbols-rounded" style="font-size:18px;">send</span> <span data-i18n="addStatus">Add Status</span></button>
                 </div>
             </div>
         </div>
@@ -1894,6 +1914,17 @@
         <div id="custom-toast" class="custom-toast">Notification</div>
     </div>
 
+    <aside id="app-update-banner" role="status" aria-live="polite" hidden>
+        <div class="app-update-copy">
+            <div class="app-update-title">A new version is ready</div>
+            <div class="app-update-detail">Update now to get the latest improvements.</div>
+        </div>
+        <div class="app-update-actions">
+            <button id="app-update-later" type="button">Later</button>
+            <button id="app-update-now" type="button">Update now</button>
+        </div>
+    </aside>
+
     <!-- Bootstrap JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -1940,6 +1971,7 @@
         let activeTargetUid = null;
         let activeChatType = 'private'; // 'private' | 'group' | 'channel'
         let activeChannelData = null;
+        let activeChannelUnsub = null;
         let activeTargetData = null;
         let longpressTargetChat = null;
         let longpressTimer = null;
@@ -2021,6 +2053,73 @@
             await registration.update();
             return registration;
         }
+
+        let appUpdateRegistration = null;
+        let applyingServiceWorkerUpdate = false;
+
+        async function startAppUpdateMonitoring() {
+            if (!('serviceWorker' in navigator) || !hasSupportedPushOrigin()) return;
+
+            try {
+                appUpdateRegistration = await registerPushServiceWorker();
+                const updateBanner = document.getElementById('app-update-banner');
+                const updateNowButton = document.getElementById('app-update-now');
+
+                const showUpdatePrompt = () => {
+                    if (appUpdateRegistration.waiting && navigator.serviceWorker.controller) {
+                        updateBanner.hidden = false;
+                    }
+                };
+
+                const checkForUpdates = () => {
+                    appUpdateRegistration.update()
+                        .then(showUpdatePrompt)
+                        .catch(error => console.warn('Could not check for app updates:', error));
+                };
+
+                const watchInstallingWorker = () => {
+                    const installingWorker = appUpdateRegistration.installing;
+                    if (!installingWorker) return;
+
+                    const onStateChange = () => {
+                        if (installingWorker.state !== 'installed') return;
+                        installingWorker.removeEventListener('statechange', onStateChange);
+                        showUpdatePrompt();
+                    };
+                    installingWorker.addEventListener('statechange', onStateChange);
+                };
+                appUpdateRegistration.addEventListener('updatefound', watchInstallingWorker);
+                watchInstallingWorker();
+
+                document.getElementById('app-update-later').addEventListener('click', () => {
+                    updateBanner.hidden = true;
+                });
+                updateNowButton.addEventListener('click', () => {
+                    if (!appUpdateRegistration.waiting) return;
+                    applyingServiceWorkerUpdate = true;
+                    updateNowButton.disabled = true;
+                    appUpdateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                });
+
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (!applyingServiceWorkerUpdate) return;
+                    applyingServiceWorkerUpdate = false;
+                    window.location.reload();
+                });
+
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState !== 'visible') return;
+                    checkForUpdates();
+                });
+                window.addEventListener('pageshow', checkForUpdates);
+
+                showUpdatePrompt();
+            } catch (error) {
+                console.warn('Could not start app update monitoring:', error);
+            }
+        }
+
+        startAppUpdateMonitoring();
 
         function showBrowserRealtimeNotification(title, body, options = {}) {
             if (!browserRealtimeNotificationsEnabled || Notification.permission !== 'granted') return;
@@ -2128,8 +2227,16 @@
                     return;
                 }
                 pushTokenKey = await getPushTokenKey(pushToken);
-                const tokenSnapshot = await get(ref(db, `fcm_tokens/${user.uid}/${pushTokenKey}`));
-                pushEnabled = tokenSnapshot.exists();
+                if (browserRealtimeNotificationsEnabled) {
+                    await set(ref(db, `fcm_tokens/${user.uid}/${pushTokenKey}`), {
+                        token: pushToken,
+                        updatedAt: Date.now()
+                    });
+                    pushEnabled = true;
+                } else {
+                    await remove(ref(db, `fcm_tokens/${user.uid}/${pushTokenKey}`));
+                    pushEnabled = false;
+                }
                 setPushUi(pushEnabled || browserRealtimeNotificationsEnabled, pushEnabled
                     ? 'You will receive new message notifications.'
                     : browserRealtimeNotificationsEnabled
@@ -2778,7 +2885,9 @@
                     const unreadCount = Math.max(0, Math.trunc(Number(chat.unreadCount) || 0));
                     totalUnreadCount += unreadCount;
                     nextBrowserUnreadSnapshot.set(c.key, unreadCount);
-                    if (browserRealtimeNotificationsEnabled && browserUnreadSnapshotInitialized) {
+                    if (browserRealtimeNotificationsEnabled
+                        && browserUnreadSnapshotInitialized
+                        && !pushEnabled) {
                         const previousUnreadCount = browserUnreadSnapshot.get(c.key) || 0;
                         const chatType = chat.isGroup ? 'group' : chat.isChannel ? 'channel' : 'private';
                         const chatIsOpen = activeChatType === chatType
@@ -3257,6 +3366,11 @@
         }
 
         window.openChat = async function(type, name, username, avatarUrl, targetUid) {
+            if (type !== 'channel') {
+                activeChannelUnsub?.();
+                activeChannelUnsub = null;
+                activeChannelData = null;
+            }
             activeChatType = type;
             activeTargetUid = targetUid;
             activeTargetData = { name, username, avatarUrl, targetUid };
@@ -3294,6 +3408,7 @@
                 trackBlockStatus(targetUid);
                 listenToTargetPresence(targetUid);
             }
+            updateBlockedUi();
 
             loadSavedChatCustomization();
 
@@ -3381,6 +3496,9 @@
             if (chatChangedUnsub) chatChangedUnsub();
             if (chatRemovedUnsub) chatRemovedUnsub();
             if (typingUnsub) typingUnsub();
+            activeChannelUnsub?.();
+            activeChannelUnsub = null;
+            activeChannelData = null;
             activeRoom = ""; activeTargetUid = null;
         };
 
@@ -3484,6 +3602,10 @@
             typingTimeout = setTimeout(() => set(typRef, { typing: false, timestamp: serverTimestamp() }), 2200);
         };
 
+        function canPostToChannel(uid = currentUser?.uid, channel = activeChannelData) {
+            return !!uid && !!channel && (uid === channel.createdBy || channel.postPermissions?.[uid] === true);
+        }
+
         window.handleSendOrMicClick = function() {
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 voiceShouldSend = true;
@@ -3498,13 +3620,12 @@
         };
 
         window.sendMessage = async function() {
-            if (isBlockedByMe || isBlockedByTarget) return window.showToast("Cannot send message. Contact blocked.");
+            if (activeChatType === 'private' && (isBlockedByMe || isBlockedByTarget)) return window.showToast("Cannot send message. Contact blocked.");
             const text = msgInput.value.trim();
             if (!text || !currentUser || !activeRoom) return;
 
             if (activeChatType === 'channel') {
-                const canPost = currentUser.uid === activeChannelData?.createdBy;
-                if (!canPost) return window.showToast("Only channel admins can broadcast.");
+                if (!canPostToChannel()) return window.showToast("You don't have permission to post in this channel.");
             }
 
             if (activeChatType !== 'channel') {
@@ -3714,6 +3835,7 @@
         let mediaRecorder = null, audioChunks = [], voiceStream = null, voiceShouldSend = false, voiceTimerInterval = null, voiceStartTime = 0;
         
         window.startVoiceRecording = async function() {
+            if (activeChatType === 'channel' && !canPostToChannel()) return window.showToast("You don't have permission to post in this channel.");
             if (!navigator.mediaDevices?.getUserMedia) return window.showToast("Microphone recording not supported.");
             try {
                 voiceStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -3736,6 +3858,7 @@
                     sendBtnIcon.innerText = 'mic';
 
                     if (!voiceShouldSend) return;
+                    if (activeChatType === 'channel' && !canPostToChannel()) return window.showToast("Your channel posting access was removed.");
                     const blob = new Blob(audioChunks, { type: 'audio/webm' });
                     window.showToast("Sending voice note...");
 
@@ -3866,10 +3989,19 @@
         // ================= UI ACTIONS AND SECONDARY FEATURES =================
         let pendingChatFile = null;
         let pendingStatusFile = null;
+        let pendingStatusPreviewUrl = '';
         let pendingChannelImageUrl = '';
         let activeStoryItems = [];
         let activeStoryIndex = 0;
         let storyTimer = null;
+        let statusStoriesUnsub = null;
+        let storyProgressInterval = null;
+        let storyDurationMs = 0;
+        let storyRemainingMs = 0;
+        let storyStartedAt = 0;
+        let storyPaused = false;
+        let storyPointerStartedAt = 0;
+        let storySuppressNextClick = false;
 
         window.switchTab = function(tab, button) {
             document.querySelectorAll('.screen-content').forEach(screen => screen.classList.remove('active'));
@@ -3983,7 +4115,7 @@
             if (!name) return window.showToast('Enter a channel name.');
             const channelRef = push(ref(db, 'channels'));
             const channelId = channelRef.key;
-            const channel = { id: channelId, name, description, createdBy: currentUser.uid, avatarUrl: pendingChannelImageUrl, createdAt: serverTimestamp(), subscribers: { [currentUser.uid]: true } };
+            const channel = { id: channelId, name, description, createdBy: currentUser.uid, avatarUrl: pendingChannelImageUrl, createdAt: serverTimestamp(), subscribers: { [currentUser.uid]: true }, postPermissions: { [currentUser.uid]: true } };
             try {
                 await set(channelRef, channel);
                 await set(ref(db, `channels_index/${channelId}`), { id: channelId, name, description, createdBy: currentUser.uid, avatarUrl: pendingChannelImageUrl, createdAt: Date.now(), subscribersCount: 1 });
@@ -4020,13 +4152,72 @@
             document.getElementById('ci-name').textContent = channel.name || 'Channel';
             document.getElementById('ci-desc').textContent = channel.description || '';
             document.getElementById('ci-avatar').style.backgroundImage = `url('${channel.avatarUrl || ''}')`;
-            document.getElementById('ci-subscribers-count').textContent = `${Object.keys(channel.subscribers || {}).length} subscribers`;
+            const subscribers = channel.subscribers || {};
+            document.getElementById('ci-subscribers-count').textContent = `${Object.keys(subscribers).length} subscribers`;
             const action = document.getElementById('ci-follow-action');
             const following = !!channel.subscribers?.[currentUser.uid];
             action.innerHTML = `<button class="auth-btn" type="button">${following ? 'Open Channel' : 'Follow Channel'}</button>`;
             action.querySelector('button').onclick = () => following ? window.openChannelChat(channelId) : window.followChannel(channelId, channel);
             action.dataset.channelId = channelId;
+            const subscriberList = document.getElementById('ci-subscribers-list');
+            subscriberList.innerHTML = '';
+            const subscriberEntries = await Promise.all(Object.keys(subscribers).map(async uid => {
+                const userSnap = await get(ref(db, `users/${uid}`));
+                return { uid, profile: userSnap.exists() ? userSnap.val() : {} };
+            }));
+            subscriberEntries.forEach(({ uid, profile }) => {
+                const row = document.createElement('div');
+                row.className = 'channel-subscriber-row';
+                const avatar = document.createElement('div');
+                avatar.className = 'channel-subscriber-avatar';
+                const image = document.createElement('img');
+                image.src = profile.profilePicUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.displayName || profile.username || 'User')}&background=08745f&color=fff`;
+                image.alt = '';
+                image.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
+                avatar.appendChild(image);
+                const identity = document.createElement('div');
+                identity.style.cssText = 'min-width:0;flex:1';
+                const name = document.createElement('div');
+                name.style.cssText = 'font-size:13px;font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+                name.textContent = profile.displayName || profile.username || 'User';
+                const role = document.createElement('div');
+                role.style.cssText = 'font-size:11px;color:var(--text-tertiary)';
+                role.textContent = uid === channel.createdBy ? 'Channel admin' : channel.postPermissions?.[uid] ? 'Can publish' : 'Subscriber';
+                identity.append(name, role);
+                row.append(avatar, identity);
+                if (currentUser.uid === channel.createdBy && uid !== channel.createdBy) {
+                    const permissionButton = document.createElement('button');
+                    permissionButton.type = 'button';
+                    permissionButton.className = 'channel-permission-btn';
+                    permissionButton.textContent = channel.postPermissions?.[uid] ? 'Remove access' : 'Allow posting';
+                    permissionButton.setAttribute('aria-label', `${permissionButton.textContent} for ${name.textContent}`);
+                    permissionButton.onclick = () => window.setChannelPostingPermission(channelId, uid, !channel.postPermissions?.[uid]);
+                    row.appendChild(permissionButton);
+                }
+                subscriberList.appendChild(row);
+            });
+            if (!subscriberEntries.length) subscriberList.innerHTML = '<div style="font-size:13px;color:var(--text-tertiary)">No subscribers yet.</div>';
             document.getElementById('channel-info-modal')?.classList.add('open');
+        };
+
+        window.setChannelPostingPermission = async function(channelId, uid, allowed) {
+            if (!currentUser || uid === currentUser.uid) return;
+            try {
+                const channelSnap = await get(ref(db, `channels/${channelId}`));
+                if (!channelSnap.exists() || channelSnap.val().createdBy !== currentUser.uid) return window.showToast('Only the channel admin can manage posting access.');
+                if (!channelSnap.val().subscribers?.[uid]) return window.showToast('Only channel subscribers can be given posting access.');
+                const permissionRef = ref(db, `channels/${channelId}/postPermissions/${uid}`);
+                if (allowed) await set(permissionRef, true); else await remove(permissionRef);
+                if (activeChannelData?.id === channelId) {
+                    activeChannelData.postPermissions = { ...(activeChannelData.postPermissions || {}) };
+                    if (allowed) activeChannelData.postPermissions[uid] = true; else delete activeChannelData.postPermissions[uid];
+                    updateBlockedUi();
+                }
+                await window.openChannelInfo(channelId);
+                window.showToast(allowed ? 'Posting access granted.' : 'Posting access removed.');
+            } catch (error) {
+                window.showToast(`Could not update posting access: ${error.message}`);
+            }
         };
 
         window.followChannel = async function(channelId, channel) {
@@ -4044,6 +4235,19 @@
             const snap = await get(ref(db, `channels/${channelId}`));
             if (!snap.exists()) return window.showToast('This channel is unavailable.');
             activeChannelData = snap.val();
+            activeChannelUnsub?.();
+            activeChannelUnsub = onValue(ref(db, `channels/${channelId}`), channelSnap => {
+                if (!channelSnap.exists()) {
+                    activeChannelData = null;
+                    updateBlockedUi();
+                    return;
+                }
+                activeChannelData = channelSnap.val();
+                if (activeRoom === channelId && activeChatType === 'channel') updateBlockedUi();
+            }, error => {
+                console.error('Could not monitor channel permissions:', error);
+                window.showToast("Could not refresh this channel's posting permissions.");
+            });
             window.closeChannelInfoModal();
             await window.openChat('channel', activeChannelData.name, '', activeChannelData.avatarUrl || '', channelId);
         };
@@ -4054,16 +4258,17 @@
 
         function renderStatusStories() {
             if (!currentUser) return;
-            onValue(ref(db, 'status_stories'), snapshot => {
+            statusStoriesUnsub?.();
+            statusStoriesUnsub = onValue(ref(db, 'status_stories'), snapshot => {
                 const list = document.getElementById('status-contacts-list');
                 if (!list) return;
                 list.innerHTML = '';
                 const users = [];
                 snapshot.forEach(userSnap => {
                     const stories = Object.entries(userSnap.val() || {}).map(([id, story]) => ({ ...story, id, uid: userSnap.key })).filter(story => !story.expiresAt || story.expiresAt > Date.now());
-                    if (stories.length && userSnap.key !== currentUser.uid && myChatPartners.has(userSnap.key)) users.push({ uid: userSnap.key, stories });
+                    if (stories.length && userSnap.key !== currentUser.uid) users.push({ uid: userSnap.key, stories });
                 });
-                if (!users.length) { list.innerHTML = '<div style="text-align:center;padding:24px 20px;color:var(--text-tertiary);font-size:13px">No recent status updates from your active chats.</div>'; return; }
+                if (!users.length) { list.innerHTML = '<div style="text-align:center;padding:24px 20px;color:var(--text-tertiary);font-size:13px">No recent status updates.</div>'; return; }
                 users.forEach(entry => {
                     const last = entry.stories[entry.stories.length - 1];
                     const item = document.createElement('div');
@@ -4095,17 +4300,49 @@
         window.handleStatusMediaPicked = function(input, type) {
             const file = input.files?.[0];
             if (!file) return;
-            pendingStatusFile = { file, type };
+            if (pendingStatusPreviewUrl) URL.revokeObjectURL(pendingStatusPreviewUrl);
+            pendingStatusFile = { file, type, duration: 0 };
             const area = document.getElementById('mp-display-area');
-            const url = URL.createObjectURL(file);
-            area.innerHTML = type === 'image' ? `<img src="${url}" alt="Status preview" style="max-width:100%;max-height:280px;object-fit:contain">` : `<video src="${url}" controls playsinline style="max-width:100%;max-height:280px"></video>`;
+            pendingStatusPreviewUrl = URL.createObjectURL(file);
+            area.innerHTML = type === 'image' ? `<img src="${pendingStatusPreviewUrl}" alt="Status preview" style="max-width:100%;max-height:280px;object-fit:contain">` : `<video src="${pendingStatusPreviewUrl}" controls playsinline preload="metadata" style="max-width:100%;max-height:280px"></video>`;
             document.getElementById('mp-title').textContent = type === 'image' ? 'Image Status' : 'Video Status';
             document.getElementById('mp-caption-input').value = '';
+            const submitButton = document.getElementById('submit-status-btn');
+            if (submitButton) submitButton.disabled = type === 'video';
+            const video = area.querySelector('video');
+            if (video) {
+                video.addEventListener('loadedmetadata', () => {
+                    if (!pendingStatusFile || pendingStatusFile.file !== file) return;
+                    if (!Number.isFinite(video.duration) || video.duration <= 0) {
+                        window.closeMediaPreviewModal();
+                        return window.showToast('Could not read the selected video duration.');
+                    }
+                    if (video.duration > 60) {
+                        window.closeMediaPreviewModal();
+                        return window.showToast('Status videos must be 60 seconds or shorter.');
+                    }
+                    pendingStatusFile.duration = video.duration;
+                    if (submitButton) submitButton.disabled = false;
+                }, { once: true });
+                video.addEventListener('error', () => {
+                    if (pendingStatusFile?.file === file) {
+                        window.closeMediaPreviewModal();
+                        window.showToast('Could not read the selected video.');
+                    }
+                }, { once: true });
+            }
             document.getElementById('media-preview-modal')?.classList.add('open');
             input.value = '';
         };
 
-        window.closeMediaPreviewModal = () => { pendingStatusFile = null; document.getElementById('media-preview-modal')?.classList.remove('open'); };
+        window.closeMediaPreviewModal = () => {
+            pendingStatusFile = null;
+            if (pendingStatusPreviewUrl) URL.revokeObjectURL(pendingStatusPreviewUrl);
+            pendingStatusPreviewUrl = '';
+            const submitButton = document.getElementById('submit-status-btn');
+            if (submitButton) submitButton.disabled = false;
+            document.getElementById('media-preview-modal')?.classList.remove('open');
+        };
 
         async function saveStatus(data) {
             const storyRef = push(ref(db, `status_stories/${currentUser.uid}`));
@@ -4129,6 +4366,7 @@
 
         window.submitMediaStatusUpload = async function() {
             if (!pendingStatusFile || !currentUser) return;
+            if (pendingStatusFile.type === 'video' && (!pendingStatusFile.duration || pendingStatusFile.duration > 60)) return window.showToast('Wait for the video check or choose a video up to 60 seconds.');
             showStatusLoader('Uploading status', 'Please wait while your media uploads...');
             try {
                 const uploaded = await uploadToCloudinary(pendingStatusFile.file, pendingStatusFile.type);
@@ -4152,25 +4390,145 @@
         window.openStoryView = function(stories) {
             activeStoryItems = Array.isArray(stories) ? stories : [];
             activeStoryIndex = 0;
+            storyPaused = false;
+            storySuppressNextClick = false;
             showStoryAtIndex();
         };
 
         function showStoryAtIndex() {
-            clearTimeout(storyTimer);
+            stopStoryPlayback();
             const story = activeStoryItems[activeStoryIndex];
             if (!story) return window.closeStoryView();
             document.getElementById('sv-name').textContent = story.displayName || 'User';
             document.getElementById('sv-avatar').style.backgroundImage = `url('${story.profilePicUrl || ''}')`;
             document.getElementById('sv-time').textContent = new Date(story.createdAt || Date.now()).toLocaleString();
             document.getElementById('sv-delete-btn').style.display = story.uid === currentUser.uid ? 'inline-flex' : 'none';
+            const muteButton = document.getElementById('sv-mute-btn');
+            muteButton.style.display = story.type === 'video' ? 'inline-flex' : 'none';
+            muteButton.textContent = 'volume_up';
             const content = document.getElementById('story-content-body');
-            content.innerHTML = story.type === 'image' ? `<img src="${escapeHtml(story.url)}" alt="Status" style="max-width:100%;max-height:100%;object-fit:contain">` : story.type === 'video' ? `<video src="${escapeHtml(story.url)}" autoplay controls playsinline style="max-width:100%;max-height:100%"></video>` : `<div style="padding:24px;color:#fff;text-align:center;background:${story.background || '#08745f'}">${escapeHtml(story.text || '')}</div>`;
-            document.getElementById('sv-views-indicator').textContent = story.text && story.type !== 'text' ? story.text : '';
+            content.innerHTML = story.type === 'image' ? `<img src="${escapeHtml(story.url)}" alt="Status" style="max-width:100%;max-height:100%;object-fit:contain">` : story.type === 'video' ? `<video src="${escapeHtml(story.url)}" autoplay controls playsinline preload="metadata" style="max-width:100%;max-height:100%"></video>` : `<div class="story-text-card" style="background:${escapeHtml(story.background || '#08745f')}">${escapeHtml(story.text || '')}</div>`;
+            const progressBars = document.getElementById('story-progress-bars');
+            progressBars.innerHTML = activeStoryItems.map((item, index) => `<div class="story-progress-track"><div class="story-progress-fill" style="width:${index < activeStoryIndex ? '100%' : '0%'}"></div></div>`).join('');
+            const viewsIndicator = document.getElementById('sv-views-indicator');
+            viewsIndicator.textContent = story.text && story.type !== 'text' ? story.text : '';
             document.getElementById('story-view-modal')?.classList.add('open');
-            storyTimer = setTimeout(() => { activeStoryIndex += 1; showStoryAtIndex(); }, 5000);
+            storyDurationMs = 0;
+            storyRemainingMs = 0;
+            storyStartedAt = 0;
+            const video = content.querySelector('video');
+            if (video) {
+                video.addEventListener('loadedmetadata', () => {
+                    if (activeStoryItems[activeStoryIndex] !== story) return;
+                const duration = Number.isFinite(video.duration) ? video.duration : 5;
+                startStoryPlayback(Math.min(60, Math.max(1, duration)) * 1000);
+                }, { once: true });
+                video.addEventListener('ended', advanceStory);
+            } else {
+                startStoryPlayback(5000);
+            }
+            registerStoryView(story).then(count => {
+                if (activeStoryItems[activeStoryIndex] !== story) return;
+                const caption = story.text && story.type !== 'text' ? `${story.text} · ` : '';
+                viewsIndicator.textContent = `${caption}${count} ${count === 1 ? 'view' : 'views'}`;
+            }).catch(error => {
+                console.error('Could not record status view:', error);
+                window.showToast('Could not record this status view.');
+            });
         }
 
-        window.closeStoryView = function() { clearTimeout(storyTimer); document.getElementById('story-view-modal')?.classList.remove('open'); activeStoryItems = []; };
+        async function registerStoryView(story) {
+            const viewsRef = ref(db, `status_stories/${story.uid}/${story.id}/views`);
+            if (story.uid !== currentUser.uid) await set(ref(db, `status_stories/${story.uid}/${story.id}/views/${currentUser.uid}`), serverTimestamp());
+            const viewsSnap = await get(viewsRef);
+            return viewsSnap.exists() ? Object.keys(viewsSnap.val()).length : 0;
+        }
+
+        function startStoryPlayback(durationMs) {
+            storyDurationMs = durationMs;
+            storyRemainingMs = durationMs;
+            if (!storyPaused) resumeStoryPlayback();
+        }
+
+        function resumeStoryPlayback() {
+            if (storyPaused) return;
+            const video = document.querySelector('#story-content-body video');
+            if (!storyDurationMs) return;
+            if (storyRemainingMs <= 0) return advanceStory();
+            storyStartedAt = Date.now();
+            clearTimeout(storyTimer);
+            clearInterval(storyProgressInterval);
+            storyTimer = setTimeout(advanceStory, storyRemainingMs);
+            storyProgressInterval = setInterval(() => {
+                const fill = document.querySelector(`#story-progress-bars .story-progress-track:nth-child(${activeStoryIndex + 1}) .story-progress-fill`);
+                if (!fill) return;
+                const elapsed = storyDurationMs - Math.max(0, storyRemainingMs - (Date.now() - storyStartedAt));
+                fill.style.width = `${Math.min(100, elapsed / storyDurationMs * 100)}%`;
+            }, 50);
+            if (video && video.paused) video.play().catch(() => window.showToast('Tap the video controls if playback does not start.'));
+        }
+
+        function pauseStoryPlayback() {
+            if (storyPaused) return;
+            storyPaused = true;
+            if (storyStartedAt) storyRemainingMs = Math.max(0, storyRemainingMs - (Date.now() - storyStartedAt));
+            clearTimeout(storyTimer);
+            clearInterval(storyProgressInterval);
+            document.getElementById('story-view-modal')?.classList.add('story-paused');
+            document.querySelector('#story-content-body video')?.pause();
+        }
+
+        function stopStoryPlayback() {
+            clearTimeout(storyTimer);
+            clearInterval(storyProgressInterval);
+            const video = document.querySelector('#story-content-body video');
+            if (video) {
+                video.pause();
+                video.removeAttribute('src');
+                video.load();
+            }
+            storyTimer = null;
+            storyProgressInterval = null;
+            storyStartedAt = 0;
+        }
+
+        function advanceStory() {
+            activeStoryIndex += 1;
+            storyPaused = false;
+            document.getElementById('story-view-modal')?.classList.remove('story-paused');
+            showStoryAtIndex();
+        }
+
+        const storyContentBody = document.getElementById('story-content-body');
+        storyContentBody.addEventListener('pointerdown', () => {
+            if (!document.getElementById('story-view-modal')?.classList.contains('open')) return;
+            storyPointerStartedAt = Date.now();
+            pauseStoryPlayback();
+        });
+        window.addEventListener('pointerup', () => {
+            if (!storyPointerStartedAt) return;
+            if (Date.now() - storyPointerStartedAt >= 250) storySuppressNextClick = true;
+            storyPointerStartedAt = 0;
+            storyPaused = false;
+            document.getElementById('story-view-modal')?.classList.remove('story-paused');
+            resumeStoryPlayback();
+        });
+        storyContentBody.addEventListener('click', event => {
+            if (storySuppressNextClick) {
+                storySuppressNextClick = false;
+                event.preventDefault();
+                return;
+            }
+            advanceStory();
+        });
+
+        window.closeStoryView = function() {
+            stopStoryPlayback();
+            document.getElementById('story-view-modal')?.classList.remove('open', 'story-paused');
+            document.getElementById('story-content-body').innerHTML = '';
+            activeStoryItems = [];
+            storyPaused = false;
+        };
         window.toggleStoryMute = event => { const video = document.querySelector('#story-content-body video'); if (video) video.muted = !video.muted; event.target.textContent = video?.muted ? 'volume_off' : 'volume_up'; };
         window.deleteCurrentStory = async function() {
             const story = activeStoryItems[activeStoryIndex];
@@ -4216,7 +4574,7 @@
 
         async function sendAttachment(data) {
             if (!currentUser || !activeRoom) return;
-            if (activeChatType === 'channel' && currentUser.uid !== activeChannelData?.createdBy) return window.showToast('Only channel admins can broadcast.');
+            if (activeChatType === 'channel' && !canPostToChannel()) return window.showToast("You don't have permission to post in this channel.");
             const path = activeChatType === 'channel' ? `channels/${activeRoom}/messages` : activeChatType === 'group' ? `groups/${activeRoom}/messages` : `private_chats/${activeRoom}/messages`;
             try {
                 await set(push(ref(db, path)), { ...data, senderId: currentUser.uid, senderName: currentUser.displayName || 'User', timestamp: serverTimestamp(), status: 'sent' });
@@ -4302,9 +4660,11 @@
         }
 
         function updateBlockedUi() {
-            const blocked = isBlockedByMe || isBlockedByTarget;
+            const blocked = activeChatType === 'private' && (isBlockedByMe || isBlockedByTarget);
+            const channelCanPost = activeChatType !== 'channel' || canPostToChannel();
             document.getElementById('blocked-banner').style.display = blocked ? 'block' : 'none';
-            document.getElementById('main-chat-input-row').style.display = blocked || activeChatType === 'channel' && currentUser?.uid !== activeChannelData?.createdBy ? 'none' : 'flex';
+            document.getElementById('channel-locked-banner').style.display = activeChatType === 'channel' && !channelCanPost ? 'block' : 'none';
+            document.getElementById('main-chat-input-row').style.display = blocked || !channelCanPost ? 'none' : 'flex';
         }
 
         function listenToTargetPresence(targetUid) {
